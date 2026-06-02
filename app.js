@@ -3,13 +3,16 @@
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbw-8Lgyva3sEPQb8WWWpdiM5u6FMoe4T0UTi5XY_Hs54Z8J-pSDTecwR2KnRNTyR0LLvQ/exec';
 
 const STORAGE_KEY = 'kakeibo_advice_eval_state_v1';
-const STEPS = ['intro', 'presurvey', 'attributes', 'consultation', 'evaluation', 'complete'];
+const STEPS = ['intro', 'presurvey', 'attributes', 'consultation', 'eval1', 'eval2', 'eval3', 'best_choice', 'complete'];
 const STEP_TITLES = {
   intro: 'イントロ',
   presurvey: '事前アンケート',
   attributes: '属性選択',
   consultation: '相談文選択',
-  evaluation: '評価',
+  eval1: 'アドバイス1評価',
+  eval2: 'アドバイス2評価',
+  eval3: 'アドバイス3評価',
+  best_choice: '最良選択',
   complete: '完了'
 };
 const SCORE_IDS = ['relevance', 'usefulness', 'specificity', 'trust', 'intention'];
@@ -129,11 +132,14 @@ function render() {
   if (state.step === 'presurvey') renderPresurvey();
   if (state.step === 'attributes') renderAttributes();
   if (state.step === 'consultation') renderConsultation();
-  if (state.step === 'evaluation') renderEvaluation();
+  if (state.step === 'eval1') renderEvalStep(1);
+  if (state.step === 'eval2') renderEvalStep(2);
+  if (state.step === 'eval3') renderEvalStep(3);
+  if (state.step === 'best_choice') renderBestChoice();
   if (state.step === 'complete') renderComplete();
 
   backButton.disabled = state.step === 'intro' || state.step === 'complete';
-  nextButton.textContent = state.step === 'evaluation' ? '完了して送信' : '次へ';
+  nextButton.textContent = state.step === 'best_choice' ? '完了して送信' : '次へ';
   nextButton.classList.toggle('hidden', state.step === 'complete');
 }
 
@@ -233,12 +239,12 @@ function renderConsultation() {
   );
 }
 
-function renderEvaluation() {
+function renderEvalStep(slot) {
   const patternKey = state.attributes.patternKey;
   const adviceSet = advice[patternKey] && advice[patternKey][state.consultation];
   if (!Array.isArray(adviceSet) || adviceSet.length !== 3) {
     app.append(
-      createElement('h2', '評価'),
+      createElement('h2', `アドバイス${slot}評価`),
       createElement('p', '選択条件に対応するアドバイスが見つかりません。前の画面に戻って選択内容を確認してください。', 'section-text')
     );
     return;
@@ -256,20 +262,18 @@ function renderEvaluation() {
     createElement('p', `属性: ${formatAttributes()}`)
   );
 
-  const stack = createElement('div', '', 'advice-stack');
-  state.displayOrder.forEach((arrayIndex, displayIndex) => {
-    const displaySlot = displayIndex + 1;
-    stack.append(createAdviceCard(displaySlot, arrayIndex, adviceSet[arrayIndex]));
-  });
+  const arrayIndex = state.displayOrder[slot - 1];
+  app.append(createElement('h2', `アドバイス${slot}評価`), summary, createAdviceCard(slot, arrayIndex, adviceSet[arrayIndex]));
+}
 
+function renderBestChoice() {
   const best = createFieldset('3つのうち、最も良いと思ったアドバイスを1つ選んでください。');
   best.classList.add('best-choice');
   best.append(createRadioGrid('best-slot', ['アドバイス1', 'アドバイス2', 'アドバイス3'], state.best_slot ? `アドバイス${state.best_slot}` : '', (value) => {
     state.best_slot = Number(value.replace('アドバイス', ''));
     saveState();
   }));
-
-  app.append(createElement('h2', 'アドバイス評価'), summary, stack, best);
+  app.append(createElement('h2', '最良選択'), best);
 }
 
 function createAdviceCard(displaySlot, arrayIndex, text) {
@@ -324,6 +328,16 @@ function renderComplete() {
   copyButton.type = 'button';
   copyButton.addEventListener('click', copyParticipantId);
   row.append(copyButton);
+
+  const restartButton = createElement('button', 'もう一度最初から回答する', 'secondary');
+  restartButton.type = 'button';
+  restartButton.addEventListener('click', () => {
+    if (confirm('最初からやり直しますか？\n新しい参加者IDが発行されます。提出済みの回答はそのまま残ります。')) {
+      localStorage.removeItem(STORAGE_KEY);
+      location.reload();
+    }
+  });
+  row.append(restartButton);
 
   if (!state.submitted) {
     const retryButton = createElement('button', '送信を再試行', 'secondary');
@@ -395,6 +409,14 @@ function createChoiceLabel(name, item, checked, onChange) {
   return label;
 }
 
+function escapeHtml(text) {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function applyInlineBold(text) {
+  return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+
 function renderAdviceText(markdown) {
   const root = createElement('div', '', 'markdown-content');
   const lines = markdown.replace(/\r\n/g, '\n').split('\n');
@@ -404,7 +426,9 @@ function renderAdviceText(markdown) {
 
   const flushParagraph = () => {
     if (!paragraph.length) return;
-    root.append(createElement('p', paragraph.join('\n')));
+    const p = document.createElement('p');
+    p.innerHTML = applyInlineBold(escapeHtml(paragraph.join('\n')));
+    root.append(p);
     paragraph = [];
   };
 
@@ -441,7 +465,7 @@ function renderAdviceText(markdown) {
         listType = type;
       }
       const li = document.createElement('li');
-      li.textContent = (unordered ? unordered[1] : ordered[1]).trim();
+      li.innerHTML = applyInlineBold(escapeHtml((unordered ? unordered[1] : ordered[1]).trim()));
       list.append(li);
       return;
     }
@@ -466,7 +490,7 @@ function goBack() {
 async function goNext() {
   if (!validateStep()) return;
 
-  if (state.step === 'evaluation') {
+  if (state.step === 'best_choice') {
     state.step = 'complete';
     state.lastPayload = buildPayload();
     saveState();
@@ -477,7 +501,7 @@ async function goNext() {
 
   const index = STEPS.indexOf(state.step);
   state.step = STEPS[index + 1];
-  if (state.step === 'evaluation') {
+  if (state.step === 'eval1') {
     ensureDisplayOrder();
   }
   saveState();
@@ -519,15 +543,17 @@ function validateStep() {
     }
   }
 
-  if (state.step === 'evaluation') {
-    for (let slot = 1; slot <= 3; slot += 1) {
-      const slotScores = state.scores[String(slot)] || {};
-      const missing = SCORE_IDS.some((id) => !slotScores[id]);
-      if (missing) {
-        showMessage('error', `アドバイス${slot}の未回答項目があります。`);
-        return false;
-      }
+  if (state.step === 'eval1' || state.step === 'eval2' || state.step === 'eval3') {
+    const slot = Number(state.step.replace('eval', ''));
+    const slotScores = state.scores[String(slot)] || {};
+    const missing = SCORE_IDS.some((id) => !slotScores[id]);
+    if (missing) {
+      showMessage('error', `アドバイス${slot}の未回答項目があります。`);
+      return false;
     }
+  }
+
+  if (state.step === 'best_choice') {
     if (!state.best_slot) {
       showMessage('error', '最も良いと思ったアドバイスを1つ選んでください。');
       return false;
