@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>家計相談アドバイス評価</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <p class="eyebrow">ユーザー評価</p>
+      <h1>家計相談アドバイス評価</h1>
+      <p class="lead">表示される相談文とアドバイスを読み、設問に回答してください。</p>
+    </header>
+
+    <section class="status-panel" aria-live="polite">
+      <div>
+        <span class="step-label" id="stepLabel">読み込み中</span>
+        <div class="progress" aria-hidden="true">
+          <span id="progressBar"></span>
+        </div>
+      </div>
+      <div class="participant-chip">
+        <span>参加者ID</span>
+        <strong id="participantMiniId">-</strong>
+      </div>
+    </section>
+
+    <section id="messageArea" class="message-area" aria-live="assertive"></section>
+    <section id="app" class="content-panel" aria-live="polite"></section>
+
+    <nav class="actions" aria-label="画面操作">
+      <button type="button" class="secondary" id="backButton">戻る</button>
+      <button type="button" class="primary" id="nextButton">次へ</button>
+    </nav>
+  </main>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
