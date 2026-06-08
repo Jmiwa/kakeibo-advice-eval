@@ -1,19 +1,30 @@
 'use strict';
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbw-8Lgyva3sEPQb8WWWpdiM5u6FMoe4T0UTi5XY_Hs54Z8J-pSDTecwR2KnRNTyR0LLvQ/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwlOij0E2TFcwNOVuSWYZKshe106S1MztFKgoLaKw3_kswh4qUyQ000CxosqnZ0akRDeg/exec';
 
-const STORAGE_KEY = 'kakeibo_advice_eval_state_v1';
-const STEPS = ['intro', 'presurvey', 'attributes', 'consultation', 'eval1', 'eval2', 'eval3', 'best_choice', 'complete'];
+const STORAGE_KEY = 'kakeibo_advice_eval_state_v2';
+const STEPS = ['intro', 'presurvey', 'attributes', 'intro_A', 'evalA1', 'evalA2', 'evalA3', 'best_A', 'intro_B', 'evalB1', 'evalB2', 'evalB3', 'best_B', 'intro_C', 'evalC1', 'evalC2', 'evalC3', 'best_C', 'complete', 'thankyou'];
 const STEP_TITLES = {
   intro: 'イントロ',
   presurvey: '事前アンケート',
   attributes: '属性選択',
-  consultation: '相談文選択',
-  eval1: 'アドバイス1評価',
-  eval2: 'アドバイス2評価',
-  eval3: 'アドバイス3評価',
-  best_choice: '最良選択',
-  complete: '完了'
+  intro_A: '相談A 案内',
+  evalA1: '相談A アドバイス1',
+  evalA2: '相談A アドバイス2',
+  evalA3: '相談A アドバイス3',
+  best_A: '相談A 最良選択',
+  intro_B: '相談B 案内',
+  evalB1: '相談B アドバイス1',
+  evalB2: '相談B アドバイス2',
+  evalB3: '相談B アドバイス3',
+  best_B: '相談B 最良選択',
+  intro_C: '相談C 案内',
+  evalC1: '相談C アドバイス1',
+  evalC2: '相談C アドバイス2',
+  evalC3: '相談C アドバイス3',
+  best_C: '相談C 最良選択',
+  complete: '完了',
+  thankyou: '終了'
 };
 const SCORE_IDS = ['relevance', 'usefulness', 'specificity', 'trust', 'intention'];
 
@@ -34,10 +45,15 @@ let state = {
   step: 'intro',
   presurvey: {},
   attributes: {},
-  consultation: '',
-  displayOrder: [],
-  scores: {},
-  best_slot: null,
+  displayOrderA: [],
+  displayOrderB: [],
+  displayOrderC: [],
+  scoresA: {},
+  scoresB: {},
+  scoresC: {},
+  best_slot_A: null,
+  best_slot_B: null,
+  best_slot_C: null,
   submitted: false,
   submitError: '',
   lastPayload: null
@@ -51,10 +67,20 @@ async function init() {
   const stored = loadState();
   const params = new URLSearchParams(window.location.search);
   const wid = params.get('wid') || '';
+  const familyParam = params.get('family') || '';
+  const urlFamily = /^[1-4]$/.test(familyParam) ? `f${familyParam}` : '';
+  const storedAttributes = { ...(stored.attributes || {}) };
+  if (!storedAttributes.family && urlFamily) {
+    storedAttributes.family = urlFamily;
+  }
 
   state = {
     ...state,
     ...stored,
+    attributes: {
+      ...state.attributes,
+      ...storedAttributes
+    },
     participant_id: stored.participant_id || createParticipantId(),
     wid: wid || stored.wid || ''
   };
@@ -109,6 +135,23 @@ function ensureValidStep() {
   }
 }
 
+function parseEvalStep(step) {
+  const match = step.match(/^eval([ABC])(\d)$/);
+  if (!match) return null;
+  return { consultation: match[1], slot: Number(match[2]) };
+}
+
+function ensureDisplayOrderFor(consultation) {
+  const key = `displayOrder${consultation}`;
+  if (!Array.isArray(state[key]) || state[key].length !== 3) {
+    state[key] = shuffle([0, 1, 2]);
+  }
+}
+
+function getFamilyGroup() {
+  return (state.attributes.family === 'f3' || state.attributes.family === 'f4') ? 'large' : 'small';
+}
+
 function renderShellOnly() {
   stepLabel.textContent = '読み込みエラー';
   progressBar.style.width = '0%';
@@ -131,16 +174,21 @@ function render() {
   if (state.step === 'intro') renderIntro();
   if (state.step === 'presurvey') renderPresurvey();
   if (state.step === 'attributes') renderAttributes();
-  if (state.step === 'consultation') renderConsultation();
-  if (state.step === 'eval1') renderEvalStep(1);
-  if (state.step === 'eval2') renderEvalStep(2);
-  if (state.step === 'eval3') renderEvalStep(3);
-  if (state.step === 'best_choice') renderBestChoice();
+  if (state.step === 'intro_A') renderConsultationIntro('A');
+  if (state.step === 'intro_B') renderConsultationIntro('B');
+  if (state.step === 'intro_C') renderConsultationIntro('C');
+  const parsedEvalStep = parseEvalStep(state.step);
+  if (parsedEvalStep) renderEvalStep(parsedEvalStep.consultation, parsedEvalStep.slot);
+  if (state.step === 'best_A') renderBestFor('A');
+  if (state.step === 'best_B') renderBestFor('B');
+  if (state.step === 'best_C') renderBestFor('C');
   if (state.step === 'complete') renderComplete();
+  if (state.step === 'thankyou') renderThankyou();
 
-  backButton.disabled = state.step === 'intro' || state.step === 'complete';
-  nextButton.textContent = state.step === 'best_choice' ? '完了して送信' : '次へ';
-  nextButton.classList.toggle('hidden', state.step === 'complete');
+  backButton.disabled = state.step === 'complete' || state.step === 'thankyou';
+  backButton.classList.toggle('hidden', state.step === 'intro');
+  nextButton.textContent = state.step === 'complete' ? '終了する' : state.step === 'best_C' ? '完了して送信' : '次へ';
+  nextButton.classList.toggle('hidden', state.step === 'thankyou');
 }
 
 function renderIntro() {
@@ -149,7 +197,7 @@ function renderIntro() {
     createElement('h2', '研究協力のお願い'),
     createElement('p', 'このページでは、家計に関する相談文と3つのアドバイスを読み、それぞれを評価していただきます。所要時間は数分程度を想定しています。', 'section-text'),
     createElement('p', 'ここに正式な実験説明、同意文言、謝礼、問い合わせ先を記載してください。この文面は公開前に編集する前提のプレースホルダです。', 'section-text'),
-    createElement('p', '属性選択では、実際のご家庭と異なる条件を選んでも構いません。想定の家計として回答してください。', 'note')
+    createElement('p', 'ご自身が現在生活している家計に基づいて回答してください。同居している家族全員の収支を対象とします。単身赴任など別居している家族は含めません。', 'note')
   );
 }
 
@@ -162,6 +210,17 @@ function renderPresurvey() {
         state.presurvey[item.id] = value;
         saveState();
       }));
+    } else if (item.type === 'textarea') {
+      const textarea = document.createElement('textarea');
+      textarea.rows = 4;
+      textarea.className = 'free-text';
+      textarea.placeholder = '自由にお書きください';
+      textarea.value = state.presurvey[item.id] || '';
+      textarea.addEventListener('input', () => {
+        state.presurvey[item.id] = textarea.value;
+        saveState();
+      });
+      group.append(textarea);
     } else {
       group.append(createRadioGrid(`presurvey-${item.id}`, item.options, state.presurvey[item.id], (value) => {
         state.presurvey[item.id] = value;
@@ -176,21 +235,30 @@ function renderPresurvey() {
 function renderAttributes() {
   const form = createElement('div', '', 'form-grid');
 
-  const familyGroup = createFieldset('家族人数');
-  familyGroup.append(createOptionCards('family', patterns.family, state.attributes.family, (value) => {
-    state.attributes.family = value;
-    updatePatternKey();
-    resetEvaluationState();
-    saveState();
-  }));
-  form.append(familyGroup);
+  if (!state.attributes.family) {
+    const familyGroup = createFieldset('家族人数');
+    familyGroup.append(createElement('p', '同居中・同一家計の人数を選んでください', 'field-hint'));
+    familyGroup.append(createOptionCards('family', patterns.family, state.attributes.family, (value) => {
+      state.attributes.family = value;
+      updatePatternKey();
+      resetEvaluationState();
+      saveState();
+      render();
+    }));
+    form.append(familyGroup);
+  }
 
+  const familyGroup = getFamilyGroup();
   patterns.expenses.forEach((expense) => {
     const group = createFieldset(expense.label);
+    const opts = expense[`options_${familyGroup}`] || {};
     const options = [
-      { key: 'L', label: expense.low },
-      { key: 'H', label: expense.high }
+      { key: 'L', label: opts.low },
+      { key: 'H', label: opts.high }
     ];
+    if (expense.hint) {
+      group.append(createElement('p', expense.hint, 'field-hint'));
+    }
     group.append(createOptionCards(`expense-${expense.id}`, options, state.attributes[expense.id], (value) => {
       state.attributes[expense.id] = value;
       updatePatternKey();
@@ -202,81 +270,63 @@ function renderAttributes() {
 
   app.append(
     createElement('h2', '属性選択'),
-    createElement('p', 'ご自身の実態と違っても構いません。想定の家計条件として、各項目を選んでください。', 'note'),
+    createElement('p', 'できる限りご自身の実際の家計に基づいて選んでください。同居している家族全員分を対象とします。', 'note'),
     form
   );
 }
 
-function renderConsultation() {
-  const list = createElement('div', '', 'consultation-list');
-  patterns.consultations.forEach((item) => {
-    const label = createElement('label', '', 'choice-card');
-    const input = document.createElement('input');
-    input.type = 'radio';
-    input.name = 'consultation';
-    input.value = item.key;
-    input.checked = state.consultation === item.key;
-    input.addEventListener('change', () => {
-      state.consultation = item.key;
-      resetEvaluationState();
-      saveState();
-      render();
-    });
-
-    const body = document.createElement('span');
-    body.append(
-      createElement('span', `${item.key}: ${item.title}`, 'choice-title'),
-      createElement('span', item.text, 'consultation-text')
-    );
-    label.append(input, body);
-    list.append(label);
-  });
-
+function renderConsultationIntro(consultation) {
+  const orderLabel = { A: '1つ目', B: '2つ目', C: '3つ目（最後）' };
+  const item = patterns.consultations.find((candidate) => candidate.key === consultation);
   app.append(
-    createElement('h2', '相談文選択'),
-    createElement('p', '評価したい相談文を1つ選んでください。', 'section-text'),
-    list
+    createElement('h2', `相談${consultation}`),
+    createElement('p', `${orderLabel[consultation]}の相談文です。次のページから、この相談文に対する3種類のアドバイスを1つずつお読みいただき、それぞれ評価してください。`, 'note'),
+    createElement('blockquote', item ? item.text : '', 'consultation-quote')
   );
 }
 
-function renderEvalStep(slot) {
+function renderEvalStep(consultation, slot) {
   const patternKey = state.attributes.patternKey;
-  const adviceSet = advice[patternKey] && advice[patternKey][state.consultation];
+  const adviceSet = advice[patternKey] && advice[patternKey][consultation];
   if (!Array.isArray(adviceSet) || adviceSet.length !== 3) {
     app.append(
-      createElement('h2', `アドバイス${slot}評価`),
+      createElement('h2', `相談${consultation} アドバイス${slot}評価`),
       createElement('p', '選択条件に対応するアドバイスが見つかりません。前の画面に戻って選択内容を確認してください。', 'section-text')
     );
     return;
   }
 
-  if (!Array.isArray(state.displayOrder) || state.displayOrder.length !== 3) {
-    state.displayOrder = shuffle([0, 1, 2]);
-    saveState();
-  }
+  ensureDisplayOrderFor(consultation);
+  saveState();
 
-  const consultation = patterns.consultations.find((item) => item.key === state.consultation);
+  const consultationItem = patterns.consultations.find((item) => item.key === consultation);
   const summary = createElement('div', '', 'summary-box');
   summary.append(
-    createElement('p', `相談文: ${state.consultation} ${consultation ? consultation.title : ''}`),
-    createElement('p', `属性: ${formatAttributes()}`)
+    createElement('p', consultationItem ? consultationItem.text : '', 'summary-consultation-text'),
+    createElement('p', `属性: ${formatAttributes()}`, 'summary-attr')
   );
 
-  const arrayIndex = state.displayOrder[slot - 1];
-  app.append(createElement('h2', `アドバイス${slot}評価`), summary, createAdviceCard(slot, arrayIndex, adviceSet[arrayIndex]));
+  const orderKey = `displayOrder${consultation}`;
+  const arrayIndex = state[orderKey][slot - 1];
+  app.append(createElement('h2', `相談${consultation} アドバイス${slot}評価`), summary, createAdviceCard(consultation, slot, arrayIndex, adviceSet[arrayIndex]));
 }
 
-function renderBestChoice() {
-  const best = createFieldset('3つのうち、最も良いと思ったアドバイスを1つ選んでください。');
-  best.classList.add('best-choice');
-  best.append(createRadioGrid('best-slot', ['アドバイス1', 'アドバイス2', 'アドバイス3'], state.best_slot ? `アドバイス${state.best_slot}` : '', (value) => {
-    state.best_slot = Number(value.replace('アドバイス', ''));
-    saveState();
-  }));
-  app.append(createElement('h2', '最良選択'), best);
+function renderBestFor(consultation) {
+  const item = patterns.consultations.find((c) => c.key === consultation);
+  const slotKey = `best_slot_${consultation}`;
+  const group = createFieldset(`相談${consultation}「${item ? item.title : ''}」— 3つのアドバイスのうち最も良かったものを1つ選んでください`);
+  group.classList.add('best-choice');
+  group.append(
+    createElement('p', item ? item.text : '', 'summary-consultation-text'),
+    createRadioGrid(`best-slot-${consultation}`, ['アドバイス1', 'アドバイス2', 'アドバイス3'], state[slotKey] ? `アドバイス${state[slotKey]}` : '', (value) => {
+      state[slotKey] = Number(value.replace('アドバイス', ''));
+      saveState();
+    })
+  );
+  app.append(createElement('h2', '最良選択'), group);
 }
 
-function createAdviceCard(displaySlot, arrayIndex, text) {
+function createAdviceCard(consultation, displaySlot, arrayIndex, text) {
   const card = createElement('article', '', 'advice-card');
   const header = createElement('div', '', 'advice-header');
   header.append(createElement('span', `アドバイス${displaySlot}`, 'advice-label'));
@@ -288,7 +338,7 @@ function createAdviceCard(displaySlot, arrayIndex, text) {
   patterns.eval_items.forEach((item) => {
     const row = createElement('div', '', 'rating-row');
     row.append(createElement('p', `${item.label}: ${item.question}`, 'rating-question'));
-    row.append(createLikert(displaySlot, item));
+    row.append(createLikert(consultation, displaySlot, item));
     ratings.append(row);
   });
 
@@ -296,20 +346,21 @@ function createAdviceCard(displaySlot, arrayIndex, text) {
   return card;
 }
 
-function createLikert(displaySlot, item) {
+function createLikert(consultation, displaySlot, item) {
   const wrap = createElement('div', '', 'likert');
-  const saved = state.scores[String(displaySlot)] && state.scores[String(displaySlot)][item.id];
+  const scoresKey = `scores${consultation}`;
+  const saved = state[scoresKey][String(displaySlot)] && state[scoresKey][String(displaySlot)][item.id];
   patterns.likert5.forEach((label, index) => {
     const option = document.createElement('label');
     const input = document.createElement('input');
     input.type = 'radio';
-    input.name = `score-${displaySlot}-${item.id}`;
+    input.name = `score-${consultation}-${displaySlot}-${item.id}`;
     input.value = String(index + 1);
     input.checked = Number(saved) === index + 1;
     input.addEventListener('change', () => {
       const key = String(displaySlot);
-      state.scores[key] = state.scores[key] || {};
-      state.scores[key][item.id] = index + 1;
+      state[scoresKey][key] = state[scoresKey][key] || {};
+      state[scoresKey][key][item.id] = index + 1;
       saveState();
     });
     option.append(input, document.createTextNode(label));
@@ -364,6 +415,24 @@ function renderComplete() {
   }
 }
 
+function renderThankyou() {
+  const restartBtn = document.createElement('button');
+  restartBtn.className = 'secondary';
+  restartBtn.type = 'button';
+  restartBtn.textContent = 'もう一度最初から回答する（テスト用）';
+  restartBtn.addEventListener('click', () => {
+    if (confirm('最初からやり直しますか？\n新しい参加者IDが発行されます。')) {
+      localStorage.removeItem(STORAGE_KEY);
+      location.reload();
+    }
+  });
+  app.append(
+    createElement('h2', 'ご協力ありがとうございました'),
+    createElement('p', '回答が完了しました。このタブを閉じて終了してください。', 'section-text'),
+    restartBtn
+  );
+}
+
 function createFieldset(legendText) {
   const group = document.createElement('fieldset');
   group.className = 'field-group';
@@ -375,8 +444,8 @@ function createFieldset(legendText) {
 
 function createRadioGrid(name, labels, selected, onChange) {
   const grid = createElement('div', '', 'choice-grid');
-  labels.forEach((label) => {
-    const item = { key: label, label };
+  labels.forEach((raw) => {
+    const item = typeof raw === 'object' ? raw : { key: raw, label: raw };
     const option = createChoiceLabel(name, item, selected === item.key, onChange);
     grid.append(option);
   });
@@ -485,34 +554,51 @@ function goBack() {
   state.step = STEPS[index - 1];
   saveState();
   render();
+  window.scrollTo(0, 0);
 }
 
 async function goNext() {
+  if (state.step === 'complete') {
+    state.step = 'thankyou';
+    saveState();
+    render();
+    window.scrollTo(0, 0);
+    return;
+  }
+
   if (!validateStep()) return;
 
-  if (state.step === 'best_choice') {
+  if (state.step === 'best_C') {
     state.step = 'complete';
     state.lastPayload = buildPayload();
     saveState();
     render();
+    window.scrollTo(0, 0);
     await submitPayload();
     return;
   }
 
   const index = STEPS.indexOf(state.step);
   state.step = STEPS[index + 1];
-  if (state.step === 'eval1') {
-    ensureDisplayOrder();
+  if (state.step === 'evalA1') {
+    ensureDisplayOrderFor('A');
+  }
+  if (state.step === 'evalB1') {
+    ensureDisplayOrderFor('B');
+  }
+  if (state.step === 'evalC1') {
+    ensureDisplayOrderFor('C');
   }
   saveState();
   render();
+  window.scrollTo(0, 0);
 }
 
 function validateStep() {
   if (state.step === 'intro') return true;
 
   if (state.step === 'presurvey') {
-    const missing = patterns.presurvey.some((item) => !state.presurvey[item.id]);
+    const missing = patterns.presurvey.some((item) => !item.optional && !state.presurvey[item.id]);
     if (missing) {
       showMessage('error', '事前アンケートの未回答項目があります。');
       return false;
@@ -531,31 +617,21 @@ function validateStep() {
     }
   }
 
-  if (state.step === 'consultation') {
-    if (!state.consultation) {
-      showMessage('error', '相談文を1つ選んでください。');
-      return false;
-    }
-    const patternKey = state.attributes.patternKey;
-    if (!advice[patternKey] || !advice[patternKey][state.consultation]) {
-      showMessage('error', '選択した相談文に対応するアドバイスが見つかりません。');
-      return false;
-    }
-  }
-
-  if (state.step === 'eval1' || state.step === 'eval2' || state.step === 'eval3') {
-    const slot = Number(state.step.replace('eval', ''));
-    const slotScores = state.scores[String(slot)] || {};
+  const parsedEvalStep = parseEvalStep(state.step);
+  if (parsedEvalStep) {
+    const scoresKey = `scores${parsedEvalStep.consultation}`;
+    const slotScores = state[scoresKey][String(parsedEvalStep.slot)] || {};
     const missing = SCORE_IDS.some((id) => !slotScores[id]);
     if (missing) {
-      showMessage('error', `アドバイス${slot}の未回答項目があります。`);
+      showMessage('error', `相談${parsedEvalStep.consultation} アドバイス${parsedEvalStep.slot}の未回答項目があります。`);
       return false;
     }
   }
 
-  if (state.step === 'best_choice') {
-    if (!state.best_slot) {
-      showMessage('error', '最も良いと思ったアドバイスを1つ選んでください。');
+  if (state.step === 'best_A' || state.step === 'best_B' || state.step === 'best_C') {
+    const c = state.step.replace('best_', '');
+    if (!state[`best_slot_${c}`]) {
+      showMessage('error', '最も良かったアドバイスを1つ選んでください。');
       return false;
     }
   }
@@ -574,18 +650,18 @@ function updatePatternKey() {
 }
 
 function resetEvaluationState() {
-  state.displayOrder = [];
-  state.scores = {};
-  state.best_slot = null;
+  state.displayOrderA = [];
+  state.displayOrderB = [];
+  state.displayOrderC = [];
+  state.scoresA = {};
+  state.scoresB = {};
+  state.scoresC = {};
+  state.best_slot_A = null;
+  state.best_slot_B = null;
+  state.best_slot_C = null;
   state.submitted = false;
   state.submitError = '';
   state.lastPayload = null;
-}
-
-function ensureDisplayOrder() {
-  if (!Array.isArray(state.displayOrder) || state.displayOrder.length !== 3) {
-    state.displayOrder = shuffle([0, 1, 2]);
-  }
 }
 
 function shuffle(values) {
@@ -598,8 +674,7 @@ function shuffle(values) {
 }
 
 function buildPayload() {
-  ensureDisplayOrder();
-  const bestArrayIndex = state.displayOrder[state.best_slot - 1];
+  ['A', 'B', 'C'].forEach((c) => ensureDisplayOrderFor(c));
   return {
     participant_id: state.participant_id,
     wid: state.wid,
@@ -607,6 +682,7 @@ function buildPayload() {
     presurvey: {
       fp_experience: state.presurvey.fp_experience,
       fp_trust: state.presurvey.fp_trust,
+      fp_trust_reason: state.presurvey.fp_trust_reason,
       manages_finance: state.presurvey.manages_finance
     },
     attributes: {
@@ -616,18 +692,36 @@ function buildPayload() {
       fod: state.attributes.fod,
       patternKey: state.attributes.patternKey
     },
-    consultation: state.consultation,
-    items: state.displayOrder.map((arrayIndex, displayIndex) => {
-      const displaySlot = displayIndex + 1;
-      return {
-        display_slot: displaySlot,
-        array_index: arrayIndex,
-        scores: state.scores[String(displaySlot)]
-      };
-    }),
-    best_slot: state.best_slot,
-    best_array_index: bestArrayIndex
+    items: {
+      A: buildItemsFor('A'),
+      B: buildItemsFor('B'),
+      C: buildItemsFor('C')
+    },
+    best: {
+      A: {
+        slot: state.best_slot_A,
+        array_index: state.displayOrderA[state.best_slot_A - 1]
+      },
+      B: {
+        slot: state.best_slot_B,
+        array_index: state.displayOrderB[state.best_slot_B - 1]
+      },
+      C: {
+        slot: state.best_slot_C,
+        array_index: state.displayOrderC[state.best_slot_C - 1]
+      }
+    }
   };
+}
+
+function buildItemsFor(consultation) {
+  const order = state[`displayOrder${consultation}`];
+  const scores = state[`scores${consultation}`];
+  return order.map((arrayIndex, displayIndex) => ({
+    display_slot: displayIndex + 1,
+    array_index: arrayIndex,
+    scores: scores[String(displayIndex + 1)]
+  }));
 }
 
 async function submitPayload() {
@@ -704,13 +798,17 @@ function copyParticipantId() {
 }
 
 function formatAttributes() {
-  const family = patterns.family.find((item) => item.key === state.attributes.family);
-  const familyLabel = family ? family.label : state.attributes.family;
+  const familyItem = patterns.family.find((item) => item.key === state.attributes.family);
+  const familyLabel = familyItem ? familyItem.label : (state.attributes.family || '');
+  const familyGroup = getFamilyGroup();
   const labels = patterns.expenses.map((expense) => {
     const value = state.attributes[expense.id];
-    return `${expense.label} ${value === 'H' ? expense.high : expense.low}`;
+    const opts = expense[`options_${familyGroup}`] || {};
+    const amountLabel = value === 'H' ? opts.high : (value === 'L' ? opts.low : '未選択');
+    return `${expense.label.replace('（月額）', '')} ${amountLabel}`;
   });
-  return [familyLabel, ...labels].join(' / ');
+  const parts = familyLabel ? [familyLabel, ...labels] : labels;
+  return parts.join(' ・ ');
 }
 
 function showMessage(type, text) {

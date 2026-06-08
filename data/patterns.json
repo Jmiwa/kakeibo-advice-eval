@@ -14,27 +14,48 @@
     },
     {
       "key": "f4",
-      "label": "4人以上"
+      "label": "4人"
     }
   ],
   "expenses": [
     {
       "id": "ins",
-      "label": "保険料",
-      "low": "3万円未満",
-      "high": "3万円以上"
+      "label": "保険料（月額）",
+      "hint": "同一家計から支出しているすべての保険料（生命保険・医療保険など）が対象です",
+      "options_small": {
+        "low": "1万円",
+        "high": "3万円"
+      },
+      "options_large": {
+        "low": "3万円",
+        "high": "5万円"
+      }
     },
     {
       "id": "com",
-      "label": "通信費",
-      "low": "1.5万円未満",
-      "high": "1.5万円以上"
+      "label": "通信費（月額）",
+      "hint": "スマートフォン代・自宅のインターネット料金など（動画・音楽サービスのサブスクは除く）",
+      "options_small": {
+        "low": "1万円",
+        "high": "2万円"
+      },
+      "options_large": {
+        "low": "2万円",
+        "high": "3万円"
+      }
     },
     {
       "id": "fod",
-      "label": "食費",
-      "low": "5万円未満",
-      "high": "5万円以上"
+      "label": "食費（月額）",
+      "hint": "同居している家族全員分が対象です",
+      "options_small": {
+        "low": "3万円",
+        "high": "5万円"
+      },
+      "options_large": {
+        "low": "5万円",
+        "high": "7万円"
+      }
     }
   ],
   "consultations": [
@@ -57,7 +78,7 @@
   "presurvey": [
     {
       "id": "fp_experience",
-      "label": "FPに相談したことがありますか？",
+      "label": "あなた自身は、FP（ファイナンシャルプランナー）に相談したことがありますか？",
       "type": "choice",
       "options": [
         "ある",
@@ -77,12 +98,19 @@
       ]
     },
     {
+      "id": "fp_trust_reason",
+      "label": "上の評価を選んだ理由を教えてください（任意）",
+      "type": "textarea",
+      "optional": true
+    },
+    {
       "id": "manages_finance",
       "label": "普段、自分で家計を管理していますか？",
       "type": "choice",
       "options": [
-        "している",
-        "していない"
+        "自分で管理している",
+        "配偶者・家族が管理している",
+        {"key": "誰も管理していない（把握できていない）", "label": "誰も管理していない", "detail": "（把握できていない）"}
       ]
     }
   ],

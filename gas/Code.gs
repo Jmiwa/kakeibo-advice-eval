@@ -1,4 +1,4 @@
-const SHEET_ID = '1ge6Q3SPY0s37PrFwwfa79BX1ofn83UxXHrZ8qaNF5YE';
+const SHEET_ID = '1On9mAguATV_7wwsGVeKAKDWvvq1cE0QMiN2KpIyXsYI';
 const SHEET_NAME = 'responses';
 
 const HEADERS = [
@@ -7,11 +7,13 @@ const HEADERS = [
   'wid',
   'fp_experience',
   'fp_trust',
+  'fp_trust_reason',
   'manages_finance',
   'family',
   'ins',
   'com',
   'fod',
+  'patternKey',
   'consultation',
   'display_slot',
   'array_index',
@@ -33,29 +35,36 @@ function doPost(e) {
     const sheet = getOrCreateSheet_(spreadsheet);
     ensureHeader_(sheet);
 
-    const rows = payload.items.map(function(item) {
-      const scores = item.scores || {};
-      return [
-        payload.timestamp,
-        payload.participant_id,
-        payload.wid || '',
-        payload.presurvey.fp_experience,
-        payload.presurvey.fp_trust,
-        payload.presurvey.manages_finance,
-        payload.attributes.family,
-        payload.attributes.ins,
-        payload.attributes.com,
-        payload.attributes.fod,
-        payload.consultation,
-        item.display_slot,
-        item.array_index,
-        scores.relevance,
-        scores.usefulness,
-        scores.specificity,
-        scores.trust,
-        scores.intention,
-        payload.best_slot === item.display_slot
-      ];
+    const rows = [];
+    ['A', 'B', 'C'].forEach(function(c) {
+      const items = (payload.items && payload.items[c]) || [];
+      const best = (payload.best && payload.best[c]) || {};
+      items.forEach(function(item) {
+        const scores = item.scores || {};
+        rows.push([
+          payload.timestamp,
+          payload.participant_id,
+          payload.wid || '',
+          payload.presurvey.fp_experience,
+          payload.presurvey.fp_trust,
+          payload.presurvey.fp_trust_reason || '',
+          payload.presurvey.manages_finance,
+          payload.attributes.family,
+          payload.attributes.ins,
+          payload.attributes.com,
+          payload.attributes.fod,
+          payload.attributes.patternKey || '',
+          c,
+          item.display_slot,
+          item.array_index,
+          scores.relevance,
+          scores.usefulness,
+          scores.specificity,
+          scores.trust,
+          scores.intention,
+          best.slot === item.display_slot
+        ]);
+      });
     });
 
     if (rows.length > 0) {

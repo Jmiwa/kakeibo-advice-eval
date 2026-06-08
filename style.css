@@ -7,6 +7,8 @@
   --accent: #1f6b68;
   --accent-dark: #174f4d;
   --accent-soft: #e3f0ee;
+  --primary: var(--accent);
+  --bg-panel: #f8faf8;
   --warn-bg: #fff5db;
   --warn-text: #74520a;
   --error-bg: #fff0ed;
@@ -193,6 +195,12 @@ h3 {
   font-weight: 700;
 }
 
+.field-hint {
+  margin: 4px 0 10px;
+  font-size: 0.87rem;
+  color: var(--muted);
+}
+
 .choice-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -230,8 +238,7 @@ h3 {
 }
 
 .choice-detail {
-  color: var(--muted);
-  font-size: 0.94rem;
+  font-weight: 700;
 }
 
 .consultation-list {
@@ -243,6 +250,18 @@ h3 {
   margin-top: 8px;
   color: var(--muted);
   white-space: pre-wrap;
+}
+
+.consultation-quote {
+  margin: 16px 0;
+  padding: 16px 20px;
+  border-left: 4px solid var(--primary);
+  background: var(--bg-panel);
+  border-radius: 0 8px 8px 0;
+  font-size: 0.97rem;
+  font-weight: 700;
+  line-height: 1.7;
+  color: var(--text);
 }
 
 .summary-box {
@@ -257,6 +276,20 @@ h3 {
 
 .summary-box p {
   margin: 0;
+}
+
+.summary-consultation-text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.7;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.summary-attr {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--muted);
 }
 
 .advice-stack {
@@ -377,6 +410,10 @@ h3 {
   margin-top: 18px;
 }
 
+#nextButton {
+  margin-left: auto;
+}
+
 button {
   min-height: 44px;
   padding: 10px 18px;
@@ -425,6 +462,21 @@ button:disabled {
   flex-wrap: wrap;
   gap: 10px;
   margin: 16px 0;
+}
+
+.free-text {
+  width: 100%;
+  min-height: 100px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+  box-sizing: border-box;
 }
 
 .fallback-box {
