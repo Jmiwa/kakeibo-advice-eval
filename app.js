@@ -186,7 +186,7 @@ function render() {
   if (state.step === 'thankyou') renderThankyou();
 
   backButton.disabled = state.step === 'complete' || state.step === 'thankyou';
-  backButton.classList.toggle('hidden', state.step === 'intro');
+  backButton.classList.toggle('hidden', state.step === 'intro' || state.step === 'thankyou');
   nextButton.textContent = state.step === 'complete' ? '終了する' : state.step === 'best_C' ? '完了して送信' : '次へ';
   nextButton.classList.toggle('hidden', state.step === 'thankyou');
 }
