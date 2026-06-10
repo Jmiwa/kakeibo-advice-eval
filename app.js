@@ -378,16 +378,6 @@ function renderComplete() {
   copyButton.addEventListener('click', copyParticipantId);
   row.append(copyButton);
 
-  const restartButton = createElement('button', 'もう一度最初から回答する', 'secondary');
-  restartButton.type = 'button';
-  restartButton.addEventListener('click', () => {
-    if (confirm('最初からやり直しますか？\n新しい参加者IDが発行されます。提出済みの回答はそのまま残ります。')) {
-      localStorage.removeItem(STORAGE_KEY);
-      location.reload();
-    }
-  });
-  row.append(restartButton);
-
   if (!state.submitted) {
     const retryButton = createElement('button', '送信を再試行', 'secondary');
     retryButton.type = 'button';
@@ -414,20 +404,9 @@ function renderComplete() {
 }
 
 function renderThankyou() {
-  const restartBtn = document.createElement('button');
-  restartBtn.className = 'secondary';
-  restartBtn.type = 'button';
-  restartBtn.textContent = 'もう一度最初から回答する（テスト用）';
-  restartBtn.addEventListener('click', () => {
-    if (confirm('最初からやり直しますか？\n新しい参加者IDが発行されます。')) {
-      localStorage.removeItem(STORAGE_KEY);
-      location.reload();
-    }
-  });
   app.append(
     createElement('h2', 'ご協力ありがとうございました'),
-    createElement('p', '回答が完了しました。このタブを閉じて終了してください。', 'section-text'),
-    restartBtn
+    createElement('p', '回答が完了しました。このタブを閉じて終了してください。', 'section-text')
   );
 }
 
