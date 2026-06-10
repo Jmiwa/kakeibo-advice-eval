@@ -268,7 +268,7 @@ function renderAttributes() {
 
   app.append(
     createElement('h2', '属性選択'),
-    createElement('p', 'ご自身の実際の家計になるべく近いものを選択してください。', 'note'),
+    createElement('p', 'ご自身の家計になるべく近いものを選択し、その家計に基づいて生活しているものとして回答してください。', 'note'),
     form
   );
 }
