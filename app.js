@@ -311,17 +311,17 @@ function renderEvalStep(consultation, slot) {
 function renderBestFor(consultation) {
   const item = patterns.consultations.find((c) => c.key === consultation);
   const slotKey = `best_slot_${consultation}`;
-  const group = createFieldset(`相談${consultation}「${item ? item.title : ''}」`);
+  const group = createFieldset('先ほどの評価を踏まえて、3つのアドバイスの中で最も満足のいくものを1つ選んでください。');
   group.classList.add('best-choice');
+  const hr = document.createElement('hr');
   group.append(
-    createElement('p', item ? item.text : '', 'summary-consultation-text'),
-    createElement('p', '妥当性・有用性・具体性・信頼性・改善意向の観点を総合的に見て、最も満足のいくアドバイスを1つ選んでください。', 'field-hint'),
+    hr,
     createRadioGrid(`best-slot-${consultation}`, ['アドバイス1', 'アドバイス2', 'アドバイス3'], state[slotKey] ? `アドバイス${state[slotKey]}` : '', (value) => {
       state[slotKey] = Number(value.replace('アドバイス', ''));
       saveState();
     })
   );
-  app.append(createElement('h2', '最良選択'), group);
+  app.append(group);
 }
 
 function createAdviceCard(consultation, displaySlot, arrayIndex, text) {

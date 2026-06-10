@@ -403,6 +403,12 @@ h3 {
   background: #f8faf8;
 }
 
+.best-choice hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 0 0 16px 0;
+}
+
 .actions {
   display: flex;
   justify-content: space-between;
