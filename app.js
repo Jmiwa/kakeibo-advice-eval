@@ -227,7 +227,7 @@ function renderPresurvey() {
     }
     form.append(group);
   });
-  app.append(createElement('h2', '事前アンケート'), form);
+  app.append(createElement('h2', '事前アンケート'), createElement('p', '以下はご自身のことについてお答えください。', 'note'), form);
 }
 
 function renderAttributes() {
@@ -268,17 +268,16 @@ function renderAttributes() {
 
   app.append(
     createElement('h2', '属性選択'),
-    createElement('p', 'できる限りご自身の実際の家計に基づいて選んでください。同居している家族全員分を対象とします。', 'note'),
+    createElement('p', 'ご自身の実際の家計になるべく近いものを選択してください。', 'note'),
     form
   );
 }
 
 function renderConsultationIntro(consultation) {
-  const orderLabel = { A: '1つ目', B: '2つ目', C: '3つ目（最後）' };
   const item = patterns.consultations.find((candidate) => candidate.key === consultation);
   app.append(
     createElement('h2', `相談${consultation}`),
-    createElement('p', `${orderLabel[consultation]}の相談文です。次のページから、この相談文に対する3種類のアドバイスを1つずつお読みいただき、それぞれ評価してください。`, 'note'),
+    createElement('p', 'あなたが以下のような相談をしたとき、あなたが選択した家計に基づいてFP（ファイナンシャルプランナー）がアドバイス（計3つ）をしてきます。以下の相談文を読んだ後、次ページ以降で、それぞれのアドバイスをお読みいただき、相談内容に対するアドバイスとしての妥当性・有用性・具体性・信頼性および改善意向をそれぞれ5段階で評価してください。', 'note'),
     createElement('blockquote', item ? item.text : '', 'consultation-quote')
   );
 }
@@ -301,7 +300,7 @@ function renderEvalStep(consultation, slot) {
   const summary = createElement('div', '', 'summary-box');
   summary.append(
     createElement('p', consultationItem ? consultationItem.text : '', 'summary-consultation-text'),
-    createElement('p', `属性: ${formatAttributes()}`, 'summary-attr')
+    createElement('p', `あなたが選択した家計属性: ${formatAttributes()}`, 'summary-attr')
   );
 
   const orderKey = `displayOrder${consultation}`;
@@ -312,10 +311,11 @@ function renderEvalStep(consultation, slot) {
 function renderBestFor(consultation) {
   const item = patterns.consultations.find((c) => c.key === consultation);
   const slotKey = `best_slot_${consultation}`;
-  const group = createFieldset(`相談${consultation}「${item ? item.title : ''}」— 3つのアドバイスのうち最も良かったものを1つ選んでください`);
+  const group = createFieldset(`相談${consultation}「${item ? item.title : ''}」`);
   group.classList.add('best-choice');
   group.append(
     createElement('p', item ? item.text : '', 'summary-consultation-text'),
+    createElement('p', '妥当性・有用性・具体性・信頼性・改善意向の観点を総合的に見て、最も満足のいくアドバイスを1つ選んでください。', 'field-hint'),
     createRadioGrid(`best-slot-${consultation}`, ['アドバイス1', 'アドバイス2', 'アドバイス3'], state[slotKey] ? `アドバイス${state[slotKey]}` : '', (value) => {
       state[slotKey] = Number(value.replace('アドバイス', ''));
       saveState();
