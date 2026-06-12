@@ -8,6 +8,17 @@
 
 ---
 
+> # ⚠️ 重要な訂正（2026-06-12 追記）— 本書の「手法ランダム順＋keymap」記述は現行実装と異なる（廃止）
+>
+> 最終実装は手法の並びを **固定** した：`web/data/advice.json` は全96セルで
+> **`array_index 0 = vanilla_rag / 1 = reranking_rag / 2 = proposed`**。
+> `private/method_keymap.json`（旧ランダム順の名残／**現 `method_keymap_STALE_DO_NOT_USE.json` にリネーム済み**）は最終 advice.json と **288中190か所ズレており、使うと解析結果が反転する。絶対に使わない。**
+>
+> - 本書で**もう正しくない箇所**：§0表「中立コード方式」、§4 手順3（ランダム順＋keymap記録）、§5 `method_keymap.json`、§9 末尾「keymapと突合して復元」。
+>   （※§6 の「参加者ごとに表示順をシャッフル」自体は正しい＝`display_slot`。誤りは「keymapで復元」の部分だけ。）
+> - **正しい固定対応は `expense_patterns.md`**（末尾「アドバイス手法と array_index の対応」）。**分析手順・結果は `web/ANALYSIS.md`**。
+> - 提示順（参加者の画面）は `display_slot` で別途シャッフルされ、ブラインドは保たれている（array_index は配列位置で、手法と固定対応）。
+
 ## 0. 確定事項サマリ
 
 | 要素 | 確定内容 |
@@ -86,6 +97,7 @@
 2. 属性キー `patternKey = f{N}_ins{L|H}_com{L|H}_fod{L|H}`、相談キー `A|B|C` でグルーピング。
 3. 各 `(patternKey, consult)` について3手法を **ランダム順に並べた配列** にして本文を格納（index 0/1/2）。
    同時に `method_keymap[patternKey][consult] = [<index0の真手法>, <index1>, <index2>]` を記録。
+   > ⚠️ **廃止**：最終実装は固定順 `0=vanilla_rag / 1=reranking_rag / 2=proposed`（冒頭の訂正参照）。keymap は生成・使用しない。
 4. `advice.json` には**本文配列のみ**（手法名なし）。`patterns.json` にラベル等。
 5. バリデーション：3手法×96の全 stem が揃うこと（不足・余剰があれば異常終了）。
    - 期待：32 patternKey × 3 consult × 3手法 = 288。
@@ -139,7 +151,7 @@
 }
 ```
 
-### `private/method_keymap.json`（非公開・`web/` 外に出力）
+### ⛔ ~~`private/method_keymap.json`（非公開・`web/` 外に出力）~~ 廃止・使用禁止（冒頭の訂正参照。実装は固定順）
 ```json
 { "f1_insL_comL_fodL": { "A": ["reranking_rag","proposed","vanilla_rag"], "B": [...], "C": [...] } }
 ```
@@ -196,7 +208,7 @@
 | relevance / usefulness / specificity / trust / intention | 5段階評価 |
 | is_best | この行が最良選択か（true/false） |
 
-※真の手法は **公開しない keymap** と `array_index` を突合して解析時に復元する。
+※⚠️ **この記述は廃止**。真の手法は **固定対応**（`array_index 0=vanilla_rag / 1=reranking_rag / 2=proposed`）で復元する。keymap は使わない（冒頭の訂正・`expense_patterns.md` 参照）。
 
 ---
 
