@@ -177,6 +177,10 @@ h3 {
   font-weight: 700;
 }
 
+.intro-text {
+  font-weight: 700;
+}
+
 .form-grid {
   display: grid;
   gap: 18px;
