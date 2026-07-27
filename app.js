@@ -64,11 +64,22 @@ backButton.addEventListener('click', goBack);
 nextButton.addEventListener('click', goNext);
 
 async function init() {
-  const stored = loadState();
+  let stored = loadState();
   const params = new URLSearchParams(window.location.search);
   const wid = params.get('wid') || '';
   const familyParam = params.get('family') || '';
   const urlFamily = /^[1-4]$/.test(familyParam) ? `f${familyParam}` : '';
+
+  // URLで家族人数が指定されていて、保存済みの家族人数と食い違う場合は、
+  // 別の募集リンクを開いた（家族人数の取り違え／再訪）とみなし、
+  // 保存済みの状態を破棄して最初からやり直す（新しい参加者IDでイントロから）。
+  // ※同じ家族人数でのリロードは破棄せず、途中の進捗を保持する。
+  const storedFamily = stored.attributes && stored.attributes.family;
+  if (urlFamily && storedFamily && storedFamily !== urlFamily) {
+    localStorage.removeItem(STORAGE_KEY);
+    stored = {};
+  }
+
   const storedAttributes = { ...(stored.attributes || {}) };
   if (!storedAttributes.family && urlFamily) {
     storedAttributes.family = urlFamily;
